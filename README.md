@@ -14,6 +14,8 @@ Built for non-technical staff to monitor apps, view logs, and restart services �
 - Monitor server health (CPU, memory, disk, uptime)
 - Check MySQL connection status
 - Access phpMyAdmin from the dashboard
+- Interactive web terminal (no SSH needed)
+- Cloudflare Tunnel config editor and restart
 - Audit trail — all admin actions are logged
 
 ## What Happens If This Panel Crashes?
@@ -37,16 +39,21 @@ The script will ask for your password once (needed for auto-start on boot).
 It automatically installs and configures everything:
 - Homebrew, Node.js, MySQL, PHP, PM2
 - phpMyAdmin (on port 8081, auto-starts on boot)
-- Project dependencies and database
+- Project dependencies
 - PM2 auto-start on boot
 - Log rotation
 
 After it finishes:
 - **Panel:** http://localhost:3000
 - **phpMyAdmin:** http://localhost:8081
-- **Login:** `admin` / `admin123`
 
-**⚠️ Change the default password after first login!**
+### First Run
+
+On first run, the app automatically:
+1. **Creates the database** and tables if they don't exist
+2. **Redirects to `/setup`** where you create your Super Admin account
+
+No manual database seeding required.
 
 ### What Auto-Starts on Boot
 
@@ -120,13 +127,7 @@ cd /path/to/Web\ Manager
 npm install
 ```
 
-### Step 5: Setup Database
-
-```bash
-mysql -u root < schema.sql
-```
-
-### Step 6: Configure Environment
+### Step 5: Configure Environment
 
 ```bash
 cp .env.example .env
@@ -134,7 +135,7 @@ cp .env.example .env
 
 Edit the `.env` file and set `DB_PASSWORD` and `SESSION_SECRET`.
 
-### Step 7: Start the Panel
+### Step 6: Start the Panel
 
 ```bash
 pm2 start app.js --name web-manager
@@ -142,6 +143,12 @@ pm2 save
 pm2 startup
 # Run the sudo command it prints
 ```
+
+### Step 7: Create Super Admin
+
+Open http://localhost:3000 — you'll be redirected to `/setup` to create your Super Admin account.
+
+> **Note:** The `/setup` page is only available once. After creating an account, it is automatically disabled.
 
 ---
 
@@ -172,27 +179,16 @@ Access your panel and apps from anywhere without exposing ports or configuring a
 
 Managed from the **Settings** page in the panel (⚙️ gear icon → SUPER_ADMIN only).
 
-### Step 1: Install Cloudflared
-
-Go to **Settings** → click **Install Cloudflared**. This installs it via Homebrew.
-
-### Step 2: Login to Cloudflare (Terminal — one time only)
-
-This is the only step that requires Terminal. It opens a browser to authenticate with your Cloudflare account:
+### Step 1: Create Tunnel (Terminal — one time only)
 
 ```bash
 cloudflared tunnel login
+cloudflared tunnel create my-tunnel
 ```
 
-Select the domain you want to use. This saves a certificate to `~/.cloudflared/cert.pem`.
+### Step 2: Edit Config (Settings Page)
 
-### Step 3: Create a Tunnel
-
-Back in the **Settings** page, enter a tunnel name (e.g. `indosofthouse`) and click **Create**. This generates a tunnel ID and credentials file.
-
-### Step 4: Edit Config
-
-In the config editor on the Settings page, paste your config:
+In the Settings page config editor, fill in your Tunnel ID, Credentials File, and add ingress rules:
 
 ```yaml
 tunnel: YOUR-TUNNEL-ID
@@ -208,7 +204,7 @@ ingress:
 
 Click **Save Config**.
 
-### Step 5: Add DNS Records
+### Step 3: Add DNS Records
 
 In your Cloudflare dashboard, add CNAME records:
 
@@ -217,33 +213,32 @@ In your Cloudflare dashboard, add CNAME records:
 | `panel` | `YOUR-TUNNEL-ID.cfargotunnel.com` |
 | `db` | `YOUR-TUNNEL-ID.cfargotunnel.com` |
 
-### Step 6: Start the Tunnel
+### Step 4: Start the Tunnel
 
 Click **Start Tunnel** on the Settings page. Your panel is now accessible at `panel.yourdomain.com`.
 
-### Step 7: Auto-Start on Boot (Terminal — one time only)
-
-```bash
-sudo cloudflared service install
-```
-
-### Summary
-
-| What | Where |
-|------|-------|
-| Install, Create, Config, Start/Stop | ✅ GUI (Settings page) |
-| Login to Cloudflare | Terminal (one time) |
-| Auto-start on boot | Terminal (one time) |
+The tunnel auto-starts when the panel boots. Use **Restart Tunnel** after editing the config.
 
 ---
 
 ## User Roles
 
 | Role | Dashboard | Logs | Start/Stop/Restart |
-|------|-----------|------|--------------------|
+|------|-----------|------|---------------------|
 | SUPER_ADMIN | ✅ | ✅ | ✅ |
 | ADMIN | ✅ | ✅ | ✅ |
 | STAFF | ✅ | ✅ | ❌ (view only) |
+
+---
+
+## Uninstall
+
+To stop and deactivate everything:
+
+```bash
+chmod +x uninstall.sh
+./uninstall.sh
+```
 
 ---
 
@@ -252,26 +247,28 @@ sudo cloudflared service install
 ```
 ├── app.js                  # Main entry point
 ├── setup.sh                # One-click setup script
+├── uninstall.sh            # Uninstall script
 ├── config/
-│   ├── database.js         # MySQL connection
+│   ├── database.js         # MySQL connection + auto-init
 │   ├── ecosystem.config.js # PM2 config template
 │   └── cloudflare-tunnel.example.yml
 ├── controllers/            # Route handlers
 ├── middleware/              # Auth, roles, rate-limit
-├── services/               # PM2, system, DB, audit
+├── services/               # PM2, system, DB, audit, tunnel
 ├── routes/                 # Express routes
 ├── views/                  # EJS templates
 ├── public/                 # CSS + JS
-└── schema.sql              # Database setup
+└── schema.sql              # Database schema reference
 ```
 
 ---
 
 ## Security Notes
 
-- No arbitrary shell commands — PM2 actions use a hardcoded whitelist
-- App names are validated against PM2 before any action
 - CSRF protection on all forms
 - Login rate-limited (5 attempts per 15 minutes)
 - Helmet security headers enabled
 - All admin actions logged with username, action, IP, and timestamp
+- Sessions persist in MySQL (survive restarts)
+- One-time `/setup` page auto-disables after first user is created
+- Terminal access restricted to SUPER_ADMIN only

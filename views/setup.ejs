@@ -1,0 +1,71 @@
+<% const extraScripts = ''; %>
+<%- include('partials/header') %>
+
+<div class="min-h-[80vh] flex items-center justify-center">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <i class="bi bi-shield-lock-fill text-white text-2xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold">Initial Setup</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Create your Super Admin account to get started</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-8">
+      <% if (typeof error !== 'undefined' && error) { %>
+      <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-3 mb-6 text-sm">
+        <i class="bi bi-exclamation-circle me-1"></i> <%= error %>
+      </div>
+      <% } %>
+
+      <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 mb-6 text-sm text-amber-700 dark:text-amber-400">
+        <i class="bi bi-info-circle mr-1"></i>
+        This page is only available once. After creating your account, it will be disabled.
+      </div>
+
+      <form method="POST" action="/setup">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Username</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="bi bi-person"></i></span>
+            <input type="text" name="username" required autofocus placeholder="e.g. admin"
+              class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all">
+          </div>
+        </div>
+
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Password</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="bi bi-lock"></i></span>
+            <input type="password" name="password" required placeholder="Min. 6 characters"
+              class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all">
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Confirm Password</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" name="confirmPassword" required placeholder="Repeat password"
+              class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all">
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-colors focus:ring-4 focus:ring-brand-500/30">
+          <i class="bi bi-shield-check mr-2"></i>Create Super Admin
+        </button>
+      </form>
+    </div>
+
+    <div class="text-center mt-6">
+      <button onclick="toggleTheme()" class="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <i class="bi bi-circle-half mr-1"></i>Toggle Theme
+      </button>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

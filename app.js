@@ -189,31 +189,43 @@ wss.on('connection', (ws, request) => {
   });
 });
 
-// Auto-start cloudflare tunnel if config exists
+// Initialize database, then start server
 (async () => {
+  try {
+    const { initDatabase } = require('./config/database');
+    const { needsSetup } = await initDatabase();
+    console.log('Database initialized');
+    if (needsSetup) {
+      console.log('No users found — visit /setup to create your Super Admin');
+    }
+  } catch (err) {
+    console.error('Database init error:', err.message);
+    console.log('Starting server anyway — DB features may not work until connection is fixed');
+  }
+
+  // Auto-start cloudflare tunnel if config exists
   try {
     const tunnelService = require('./services/tunnelService');
     const installed = await tunnelService.isInstalled();
-    if (!installed) return;
-
-    const config = tunnelService.getConfig();
-    if (!config || !config.trim()) return;
-
-    const status = await tunnelService.getStatus();
-    if (status.running) {
-      console.log('Cloudflare tunnel already running');
-      return;
+    if (installed) {
+      const config = tunnelService.getConfig();
+      if (config && config.trim()) {
+        const status = await tunnelService.getStatus();
+        if (!status.running) {
+          await tunnelService.startTunnel();
+          console.log('Cloudflare tunnel auto-started');
+        } else {
+          console.log('Cloudflare tunnel already running');
+        }
+      }
     }
-
-    await tunnelService.startTunnel();
-    console.log('Cloudflare tunnel auto-started');
   } catch (err) {
     console.log('Tunnel auto-start skipped:', err.message);
   }
-})();
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`Web Manager running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+  // Start server
+  server.listen(PORT, () => {
+    console.log(`Web Manager running on http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+})();
