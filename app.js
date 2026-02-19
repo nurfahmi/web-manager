@@ -108,7 +108,7 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // Parse session to check auth — need a mock res with setHeader/getHeader for express-session
+  // Parse session to check auth
   const mockRes = {
     setHeader: () => {},
     getHeader: () => {},
@@ -122,6 +122,7 @@ server.on('upgrade', (request, socket, head) => {
       return;
     }
 
+
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });
@@ -132,13 +133,23 @@ wss.on('connection', (ws, request) => {
   const shell = process.env.SHELL || '/bin/zsh';
   const homeDir = require('os').homedir();
 
-  const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-256color',
-    cols: 120,
-    rows: 30,
-    cwd: homeDir,
-    env: { ...process.env, TERM: 'xterm-256color' }
-  });
+  let ptyProcess;
+  try {
+    ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: 120,
+      rows: 30,
+      cwd: homeDir,
+      env: { ...process.env, TERM: 'xterm-256color' }
+    });
+  } catch (err) {
+    console.error('[WS] Failed to spawn pty:', err.message);
+    try {
+      ws.send('\r\n\x1b[31mFailed to start terminal: ' + err.message + '\x1b[0m\r\n');
+      ws.close();
+    } catch (e) {}
+    return;
+  }
 
   ptyProcess.onData((data) => {
     try { ws.send(data); } catch (e) {}
