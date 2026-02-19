@@ -20,7 +20,7 @@
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "mysql2": "^3.17.2",
-    "node-pty": "^1.1.0",
+    "node-pty": "^1.2.0-beta.11",
     "ws": "^8.19.0"
   }
 }
