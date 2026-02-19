@@ -42,7 +42,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Sessions
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'change-this-secret',
   resave: false,
   saveUninitialized: false,
@@ -51,7 +51,8 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     maxAge: 8 * 60 * 60 * 1000 // 8 hours
   }
-}));
+});
+app.use(sessionMiddleware);
 
 // CSRF protection
 const csrfProtection = csrf();
@@ -100,12 +101,6 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 // Session parser for WebSocket auth
-const sessionParser = session({
-  secret: process.env.SESSION_SECRET || 'change-this-secret',
-  resave: false,
-  saveUninitialized: false
-});
-
 server.on('upgrade', (request, socket, head) => {
   const pathname = url.parse(request.url).pathname;
   if (pathname !== '/ws/terminal') {
@@ -114,7 +109,7 @@ server.on('upgrade', (request, socket, head) => {
   }
 
   // Parse session to check auth
-  sessionParser(request, {}, () => {
+  sessionMiddleware(request, {}, () => {
     if (!request.session || !request.session.user || request.session.user.role !== 'SUPER_ADMIN') {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
