@@ -29,7 +29,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdn.tailwindcss.com", "fonts.googleapis.com"],
       fontSrc: ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", "ws:", "wss:"]
+      connectSrc: ["'self'", "ws:", "wss:", "cdn.jsdelivr.net", "cdn.tailwindcss.com"]
     }
   }
 }));
@@ -108,8 +108,14 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // Parse session to check auth
-  sessionMiddleware(request, {}, () => {
+  // Parse session to check auth — need a mock res with setHeader/getHeader for express-session
+  const mockRes = {
+    setHeader: () => {},
+    getHeader: () => {},
+    writeHead: () => {},
+    end: () => {}
+  };
+  sessionMiddleware(request, mockRes, () => {
     if (!request.session || !request.session.user || request.session.user.role !== 'SUPER_ADMIN') {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
