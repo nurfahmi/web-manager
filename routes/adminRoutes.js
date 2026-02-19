@@ -45,10 +45,10 @@ router.get('/api/check-env', requireRole('SUPER_ADMIN'), appController.checkEnv)
 
 // Tunnel API (SUPER_ADMIN only)
 router.get('/api/tunnel/status', requireRole('SUPER_ADMIN'), settingsController.getTunnelStatus);
-router.post('/api/tunnel/install', requireRole('SUPER_ADMIN'), settingsController.installCloudflared);
 router.post('/api/tunnel/config', requireRole('SUPER_ADMIN'), settingsController.saveTunnelConfig);
 router.post('/api/tunnel/start', requireRole('SUPER_ADMIN'), settingsController.startTunnel);
 router.post('/api/tunnel/stop', requireRole('SUPER_ADMIN'), settingsController.stopTunnel);
+router.post('/api/tunnel/restart', requireRole('SUPER_ADMIN'), settingsController.restartTunnel);
 router.post('/api/terminal', requireRole('SUPER_ADMIN'), settingsController.runCommand);
 
 module.exports = router;

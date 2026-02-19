@@ -39,19 +39,6 @@ async function getTunnelStatus(req, res) {
 }
 
 /**
- * Install cloudflared
- */
-async function installCloudflared(req, res) {
-  try {
-    await tunnelService.install();
-    await auditService.log(req.session.user.id, 'INSTALL CLOUDFLARED', 'system', req.ip);
-    res.json({ success: true, message: 'cloudflared installed successfully' });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-}
-
-/**
  * Save tunnel config
  */
 async function saveTunnelConfig(req, res) {
@@ -62,22 +49,6 @@ async function saveTunnelConfig(req, res) {
     tunnelService.saveConfig(config);
     await auditService.log(req.session.user.id, 'UPDATE TUNNEL CONFIG', 'cloudflare', req.ip);
     res.json({ success: true, message: 'Config saved to ' + tunnelService.getConfigPath() });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-}
-
-/**
- * Create tunnel
- */
-async function createTunnel(req, res) {
-  try {
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ success: false, message: 'Tunnel name required' });
-
-    const result = await tunnelService.createTunnel(name);
-    await auditService.log(req.session.user.id, 'CREATE TUNNEL', name, req.ip);
-    res.json({ success: true, message: result });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -104,6 +75,22 @@ async function stopTunnel(req, res) {
     const result = await tunnelService.stopTunnel();
     await auditService.log(req.session.user.id, 'STOP TUNNEL', 'cloudflare', req.ip);
     res.json({ success: true, message: result });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * Restart tunnel (stop then start)
+ */
+async function restartTunnel(req, res) {
+  try {
+    await tunnelService.stopTunnel();
+    // Small delay to ensure process fully stops
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await tunnelService.startTunnel();
+    await auditService.log(req.session.user.id, 'RESTART TUNNEL', 'cloudflare', req.ip);
+    res.json({ success: true, message: 'Tunnel restarted' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -158,10 +145,10 @@ async function terminalPage(req, res) {
 module.exports = {
   settingsPage,
   getTunnelStatus,
-  installCloudflared,
   saveTunnelConfig,
   startTunnel,
   stopTunnel,
+  restartTunnel,
   runCommand,
   terminalPage
 };

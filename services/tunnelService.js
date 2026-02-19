@@ -46,34 +46,6 @@ async function getStatus() {
 }
 
 /**
- * Install cloudflared via Homebrew
- */
-async function install() {
-  const { stdout } = await execAsync('brew install cloudflared');
-  return stdout;
-}
-
-/**
- * Login to Cloudflare (generates cert)
- */
-async function login() {
-  // This opens browser, we just need to start the process
-  const { stdout } = await execAsync('cloudflared tunnel login 2>&1 || true', { timeout: 5000 });
-  return stdout;
-}
-
-/**
- * Create a new tunnel
- */
-async function createTunnel(name) {
-  const safeName = name.replace(/[^a-zA-Z0-9\-_]/g, '');
-  if (!safeName) throw new Error('Invalid tunnel name');
-
-  const { stdout } = await execAsync(`cloudflared tunnel create ${safeName}`);
-  return stdout;
-}
-
-/**
  * Get or create config file
  */
 function getConfigPath() {
@@ -124,14 +96,6 @@ async function startTunnel() {
 }
 
 /**
- * Install as system service (auto-start on boot)
- */
-async function installService() {
-  const { stdout } = await execAsync('sudo cloudflared service install 2>&1');
-  return stdout;
-}
-
-/**
  * Stop tunnel service
  */
 async function stopTunnel() {
@@ -143,40 +107,12 @@ async function stopTunnel() {
   }
 }
 
-/**
- * Delete a tunnel by name
- */
-async function deleteTunnel(name) {
-  const safeName = name.replace(/[^a-zA-Z0-9\-_]/g, '');
-  if (!safeName) throw new Error('Invalid tunnel name');
-  const { stdout } = await execAsync(`cloudflared tunnel delete ${safeName} 2>&1`);
-  return stdout;
-}
-
-/**
- * Switch Cloudflare account (delete cert and re-login)
- */
-async function switchAccount() {
-  const homeDir = require('os').homedir();
-  const certPath = path.join(homeDir, '.cloudflared', 'cert.pem');
-  if (fs.existsSync(certPath)) {
-    fs.unlinkSync(certPath);
-  }
-  return 'Certificate removed. Run "cloudflared tunnel login" in the terminal below to login with a new account.';
-}
-
 module.exports = {
   isInstalled,
   getStatus,
-  install,
-  login,
-  createTunnel,
   getConfig,
   saveConfig,
   getConfigPath,
   startTunnel,
-  stopTunnel,
-  installService,
-  deleteTunnel,
-  switchAccount
+  stopTunnel
 };

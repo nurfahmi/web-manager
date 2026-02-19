@@ -17,29 +17,15 @@
     <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
       <h2 class="font-semibold text-lg"><i class="bi bi-cloud-arrow-up mr-2 text-brand-500"></i>Cloudflare Tunnel</h2>
       <div class="flex items-center gap-2">
-        <% if (tunnelStatus.installed) { %>
-          <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">Installed</span>
-        <% } else { %>
-          <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full font-medium">Not Installed</span>
-        <% } %>
         <% if (tunnelStatus.running) { %>
           <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">● Running</span>
-        <% } else if (tunnelStatus.installed) { %>
+        <% } else { %>
           <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full font-medium">● Stopped</span>
         <% } %>
       </div>
     </div>
 
     <div class="p-5">
-      <% if (!tunnelStatus.installed) { %>
-      <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
-        <h3 class="font-semibold text-amber-800 dark:text-amber-400 mb-2"><i class="bi bi-download mr-1"></i>Step 1: Install Cloudflared</h3>
-        <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">Cloudflared is not installed. Click below to install via Homebrew.</p>
-        <button onclick="tunnelAction('install', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors">
-          <i class="bi bi-download mr-1"></i>Install Cloudflared
-        </button>
-      </div>
-      <% } else { %>
 
       <!-- Controls -->
       <div class="flex flex-wrap gap-3 mb-5">
@@ -51,6 +37,9 @@
         <button onclick="tunnelAction('stop', this)" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
           <i class="bi bi-stop-fill mr-1"></i>Stop Tunnel
         </button>
+        <button onclick="tunnelAction('restart', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <i class="bi bi-arrow-repeat mr-1"></i>Restart Tunnel
+        </button>
         <% } %>
       </div>
 
@@ -59,7 +48,7 @@
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold"><i class="bi bi-file-earmark-code mr-1"></i>Tunnel Configuration</h3>
           <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-400"><%= tunnelStatus.installed ? '~/.cloudflared/config.yml' : '' %></span>
+            <span class="text-xs text-gray-400">~/.cloudflared/config.yml</span>
             <button onclick="toggleConfigMode()" id="configModeBtn" class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
               <i class="bi bi-code-slash mr-1"></i>Raw YAML
             </button>
@@ -126,7 +115,6 @@
           </div>
         </div>
       </div>
-      <% } %>
     </div>
   </div>
 
