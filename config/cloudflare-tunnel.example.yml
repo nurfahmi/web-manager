@@ -1,0 +1,53 @@
+# Cloudflare Tunnel Configuration Example
+# File: ~/.cloudflared/config.yml
+# Reference: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /Users/YOUR_USER/.cloudflared/YOUR_TUNNEL_ID.json
+
+ingress:
+  # Admin Panel
+  - hostname: admin.yourdomain.com
+    service: http://localhost:3000
+
+  # Node.js App A
+  - hostname: app-a.yourdomain.com
+    service: http://localhost:3001
+
+  # Node.js App B
+  - hostname: app-b.yourdomain.com
+    service: http://localhost:3002
+
+  # Node.js App C
+  - hostname: app-c.yourdomain.com
+    service: http://localhost:3003
+
+  # phpMyAdmin
+  - hostname: dbadmin.yourdomain.com
+    service: http://localhost:8081
+
+  # Catch-all (required)
+  - service: http_status:404
+
+# --- Cloudflare Access Policies ---
+# Configure in Cloudflare Zero Trust Dashboard:
+#
+# 1. Application: Admin Panel
+#    - Domain: admin.yourdomain.com
+#    - Policy: Allow - Email in (admin@company.com)
+#    - Session duration: 8 hours
+#
+# 2. Application: Database Admin
+#    - Domain: dbadmin.yourdomain.com
+#    - Policy: Allow - Email in (admin@company.com)
+#    - Session duration: 1 hour
+#
+# 3. (Optional) IP Restriction
+#    - Add "Require" rule: IP ranges = office IP
+#
+# --- Running the tunnel ---
+# Install: brew install cloudflared
+# Login:   cloudflared tunnel login
+# Create:  cloudflared tunnel create web-manager
+# Run:     cloudflared tunnel run web-manager
+# Service: cloudflared service install

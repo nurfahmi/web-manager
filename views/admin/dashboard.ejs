@@ -1,0 +1,379 @@
+<%- include('../partials/header') %>
+
+<!-- Toast -->
+<div id="toastContainer" class="fixed top-20 right-4 z-50"></div>
+
+<!-- Server Health Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Uptime</p>
+        <p class="text-2xl font-bold mt-1" id="stat-uptime"><%= formatUptime(metrics.uptime) %></p>
+      </div>
+      <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+        <i class="bi bi-clock-history text-green-600 dark:text-green-400"></i>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">CPU</p>
+        <p class="text-2xl font-bold mt-1" id="stat-cpu"><%= metrics.cpu.usage %>%</p>
+        <p class="text-xs text-gray-400 mt-0.5"><%= metrics.cpu.cores %> cores</p>
+      </div>
+      <div class="w-10 h-10 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center">
+        <i class="bi bi-cpu text-brand-600 dark:text-brand-400"></i>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Memory</p>
+        <p class="text-2xl font-bold mt-1" id="stat-memory"><%= metrics.memory.percent %>%</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="stat-memory-detail"><%= formatBytes(metrics.memory.used) %> / <%= formatBytes(metrics.memory.total) %></p>
+      </div>
+      <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
+        <i class="bi bi-memory text-amber-600 dark:text-amber-400"></i>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Disk</p>
+        <p class="text-2xl font-bold mt-1" id="stat-disk"><%= metrics.disk.percent %>%</p>
+        <p class="text-xs text-gray-400 mt-0.5" id="stat-disk-detail"><%= formatBytes(metrics.disk.used) %> / <%= formatBytes(metrics.disk.total) %></p>
+      </div>
+      <div class="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center">
+        <i class="bi bi-hdd text-cyan-600 dark:text-cyan-400"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- System Info -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-3 flex items-center gap-3 flex-wrap">
+    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400"><i class="bi bi-cpu mr-1"></i><%= metrics.cpu.model %></span>
+    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400"><i class="bi bi-hdd-network mr-1"></i><%= metrics.hostname %></span>
+    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">Node <%= versions.nodeVersion %></span>
+    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-400">PM2 v<%= versions.pm2Version %></span>
+  </div>
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i class="bi bi-database text-gray-500"></i>
+      <span class="text-sm">MySQL:</span>
+      <% if (dbStatus.connected) { %>
+        <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">Connected</span>
+      <% } else { %>
+        <span class="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full font-medium">Disconnected</span>
+      <% } %>
+    </div>
+    <a href="<%= phpMyAdminUrl %>" target="_blank" class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+      <i class="bi bi-table mr-1"></i>phpMyAdmin
+    </a>
+  </div>
+</div>
+
+<!-- Applications Table -->
+<div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 mb-6">
+  <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+    <h2 class="font-semibold text-lg"><i class="bi bi-grid-3x3-gap mr-2 text-brand-500"></i>PM2 Applications</h2>
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-gray-400" id="lastRefresh">Auto-refresh: 15s</span>
+      <button onclick="refreshAll()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500" title="Refresh">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <% if (user.role === 'SUPER_ADMIN') { %>
+      <button onclick="document.getElementById('addAppModal').classList.remove('hidden')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <i class="bi bi-plus-lg mr-1"></i>Add App
+      </button>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (apps.length === 0) { %>
+  <div class="text-center py-16 text-gray-400">
+    <i class="bi bi-inbox text-5xl"></i>
+    <p class="mt-3 font-medium">No PM2 applications found</p>
+    <p class="text-sm mt-1">Add an application to get started.</p>
+  </div>
+  <% } else { %>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-100 dark:border-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <th class="px-5 py-3 font-medium">Application</th>
+          <th class="px-5 py-3 font-medium">Status</th>
+          <th class="px-5 py-3 font-medium">Memory</th>
+          <th class="px-5 py-3 font-medium">CPU</th>
+          <th class="px-5 py-3 font-medium">Uptime</th>
+          <th class="px-5 py-3 font-medium">Restarts</th>
+          <th class="px-5 py-3 font-medium text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="appsTableBody">
+        <% apps.forEach(app => { %>
+        <tr class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors" data-app="<%= app.name %>">
+          <td class="px-5 py-3">
+            <div class="font-semibold"><%= app.name %></div>
+            <div class="text-xs text-gray-400">PID: <%= app.pid %></div>
+          </td>
+          <td class="px-5 py-3">
+            <% if (app.status === 'online') { %>
+              <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Online</span>
+            <% } else if (app.status === 'stopped') { %>
+              <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"><span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>Stopped</span>
+            <% } else if (app.status === 'errored') { %>
+              <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Errored</span>
+            <% } else { %>
+              <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span><%= app.status %></span>
+            <% } %>
+          </td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400"><%= app.memory ? (app.memory / 1024 / 1024).toFixed(1) + ' MB' : '—' %></td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400"><%= typeof app.cpu !== 'undefined' ? app.cpu + '%' : '—' %></td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400">
+            <% if (app.uptime && app.status === 'online') { %>
+              <%= formatUptime((Date.now() - app.uptime) / 1000) %>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="px-5 py-3">
+            <span class="<%= app.restarts > 5 ? 'text-amber-500 font-medium' : 'text-gray-600 dark:text-gray-400' %>"><%= app.restarts || 0 %></span>
+          </td>
+          <td class="px-5 py-3 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <% if (user.role !== 'STAFF') { %>
+                <% if (app.status !== 'online') { %>
+                  <button onclick="appAction('<%= app.name %>', 'start')" class="p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors" title="Start">
+                    <i class="bi bi-play-fill"></i>
+                  </button>
+                <% } %>
+                <% if (app.status === 'online') { %>
+                  <button onclick="appAction('<%= app.name %>', 'restart')" class="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-400 transition-colors" title="Restart">
+                    <i class="bi bi-arrow-repeat"></i>
+                  </button>
+                  <button onclick="appAction('<%= app.name %>', 'stop')" class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors" title="Stop">
+                    <i class="bi bi-stop-fill"></i>
+                  </button>
+                <% } %>
+              <% } %>
+              <a href="/admin/app/<%= app.name %>/logs" class="p-1.5 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-900/30 text-brand-600 dark:text-brand-400 transition-colors" title="Logs">
+                <i class="bi bi-journal-text"></i>
+              </a>
+              <% if (user.role === 'SUPER_ADMIN') { %>
+              <button onclick="toggleWatch('<%= app.name %>', this)" class="p-1.5 rounded-lg transition-colors <%= app.watch ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400' %>" title="<%= app.watch ? 'Watch ON — click to disable' : 'Watch OFF — click to enable' %>">
+                <i class="bi bi-eye<%= app.watch ? '-fill' : '' %>"></i>
+              </button>
+              <button onclick="openAppTerminal('<%= app.name %>', '<%= app.cwd || '' %>')" class="p-1.5 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 transition-colors" title="Terminal">
+                <i class="bi bi-terminal"></i>
+              </button>
+              <button onclick="deleteApp('<%= app.name %>')" class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors" title="Remove">
+                <i class="bi bi-trash"></i>
+              </button>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+
+<!-- Recent Audit Logs -->
+<div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+  <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+    <h2 class="font-semibold text-lg"><i class="bi bi-journal-text mr-2 text-brand-500"></i>Recent Activity</h2>
+  </div>
+  <% if (recentLogs.length === 0) { %>
+  <div class="text-center py-12 text-gray-400">
+    <p>No activity recorded yet</p>
+  </div>
+  <% } else { %>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-100 dark:border-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <th class="px-5 py-3 font-medium">User</th>
+          <th class="px-5 py-3 font-medium">Action</th>
+          <th class="px-5 py-3 font-medium">Target</th>
+          <th class="px-5 py-3 font-medium">IP</th>
+          <th class="px-5 py-3 font-medium">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentLogs.forEach(log => { %>
+        <tr class="border-b border-gray-100 dark:border-gray-800">
+          <td class="px-5 py-3 font-medium"><%= log.username %></td>
+          <td class="px-5 py-3">
+            <% if (log.action_type.includes('START') || log.action_type.includes('RESTART') || log.action_type.includes('ADD')) { %>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium"><%= log.action_type %></span>
+            <% } else if (log.action_type.includes('STOP') || log.action_type.includes('DELETE')) { %>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium"><%= log.action_type %></span>
+            <% } else { %>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 font-medium"><%= log.action_type %></span>
+            <% } %>
+          </td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400"><%= log.target_app || '—' %></td>
+          <td class="px-5 py-3 text-xs text-gray-400"><%= log.ip_address || '—' %></td>
+          <td class="px-5 py-3 text-xs text-gray-400"><%= new Date(log.created_at).toLocaleString() %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+
+<input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+<input type="hidden" id="userRole" value="<%= user.role %>">
+
+<!-- Add App Modal -->
+<% if (user.role === 'SUPER_ADMIN') { %>
+<div id="addAppModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('addAppModal').classList.add('hidden')"></div>
+  <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <h3 class="text-lg font-semibold"><i class="bi bi-plus-circle text-brand-500 mr-2"></i>Add New Application</h3>
+      <button onclick="document.getElementById('addAppModal').classList.add('hidden')" class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="px-6 py-5">
+      <div class="mb-5">
+        <label class="block text-sm font-medium mb-2">Application Name</label>
+        <input type="text" id="appNameInput" placeholder="e.g. my-app"
+          class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all">
+        <p class="text-xs text-gray-400 mt-1.5">Only letters, numbers, dashes (-) and underscores (_).</p>
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Script File (.js)</label>
+        <div class="flex gap-2 mb-2">
+          <input type="text" id="scriptPathInput" placeholder="Click Browse to select a file" readonly
+            class="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 outline-none">
+          <button onclick="toggleBrowser()" class="px-4 py-2.5 rounded-xl border border-brand-300 dark:border-brand-700 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 font-medium transition-colors">
+            <i class="bi bi-folder2-open mr-1"></i>Browse
+          </button>
+        </div>
+        <!-- File Browser -->
+        <div id="fileBrowser" class="hidden">
+          <div class="border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div class="px-4 py-2 bg-gray-100 dark:bg-gray-800 flex items-center gap-2 border-b border-gray-300 dark:border-gray-700">
+              <i class="bi bi-folder-fill text-amber-500"></i>
+              <span class="text-xs text-gray-500 dark:text-gray-400 truncate" id="currentPathLabel">/Users</span>
+            </div>
+            <div id="fileList" class="max-h-72 overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">.env Configuration <span class="text-xs text-gray-400 font-normal">(optional)</span></label>
+        <textarea id="envContentInput" rows="6" placeholder="PORT=3001&#10;DB_HOST=localhost&#10;DB_NAME=myapp&#10;..." class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm"></textarea>
+        <p class="text-xs text-gray-400 mt-1.5">Paste your .env content here. It will be saved to the project root folder.</p>
+      </div>
+      <div id="addAppError" class="hidden bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-4 py-3 text-sm"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-3">
+      <button onclick="document.getElementById('addAppModal').classList.add('hidden')" class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium transition-colors">Cancel</button>
+      <button onclick="addApp()" id="addAppBtn" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors">
+        <i class="bi bi-plus-lg mr-1"></i>Add & Start App
+      </button>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- App Terminal Modal -->
+<div id="appTerminalModal" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+  <div class="fixed inset-0 bg-black/50" onclick="closeAppTerminal()"></div>
+  <div class="relative bg-gray-950 rounded-t-2xl shadow-2xl w-full max-w-4xl" style="max-height: 60vh;">
+    <div class="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="bi bi-terminal text-green-400"></i>
+        <span class="text-sm font-semibold text-white" id="appTermTitle">Terminal</span>
+        <span class="text-xs text-gray-500" id="appTermPath"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="document.getElementById('appTermOutput').textContent = ''" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Clear</button>
+        <button onclick="closeAppTerminal()" class="text-gray-500 hover:text-white transition-colors"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <pre id="appTermOutput" class="px-4 pt-3 pb-2 text-xs font-mono text-green-400 overflow-auto whitespace-pre-wrap" style="max-height: 40vh; min-height: 120px;"></pre>
+    <div class="flex items-center gap-2 px-4 pb-4">
+      <span class="text-green-500 text-sm font-mono">$</span>
+      <input type="text" id="appTermInput" placeholder="Type a command..." autocomplete="off"
+        class="flex-1 bg-transparent text-green-400 font-mono text-sm outline-none border-none placeholder-gray-600">
+    </div>
+  </div>
+</div>
+
+<script src="/js/dashboard.js"></script>
+<script>
+let appTermDir = '';
+const appTermHistory = [];
+let appTermHistIdx = -1;
+
+function openAppTerminal(name, dir) {
+  appTermDir = dir;
+  document.getElementById('appTermTitle').textContent = name;
+  document.getElementById('appTermPath').textContent = dir;
+  document.getElementById('appTermOutput').textContent = dir + '\n\n';
+  document.getElementById('appTermInput').value = '';
+  document.getElementById('appTerminalModal').classList.remove('hidden');
+  document.getElementById('appTermInput').focus();
+}
+
+function closeAppTerminal() {
+  document.getElementById('appTerminalModal').classList.add('hidden');
+}
+
+document.getElementById('appTermInput').addEventListener('keydown', async function(e) {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (appTermHistIdx < appTermHistory.length - 1) { appTermHistIdx++; this.value = appTermHistory[appTermHistory.length - 1 - appTermHistIdx]; }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (appTermHistIdx > 0) { appTermHistIdx--; this.value = appTermHistory[appTermHistory.length - 1 - appTermHistIdx]; } else { appTermHistIdx = -1; this.value = ''; }
+    return;
+  }
+  if (e.key === 'Escape') { closeAppTerminal(); return; }
+  if (e.key !== 'Enter') return;
+
+  const cmd = this.value.trim();
+  if (!cmd) return;
+  appTermHistory.push(cmd);
+  appTermHistIdx = -1;
+  this.value = '';
+
+  const output = document.getElementById('appTermOutput');
+  output.textContent += '$ ' + cmd + '\n';
+  output.textContent += 'Running...\n';
+  output.scrollTop = output.scrollHeight;
+
+  // Prepend cd to app dir
+  const fullCmd = appTermDir ? 'cd "' + appTermDir + '" && ' + cmd : cmd;
+  const csrf = document.getElementById('csrfToken').value;
+
+  try {
+    const res = await fetch('/admin/api/terminal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrf },
+      body: JSON.stringify({ command: fullCmd })
+    });
+    const data = await res.json();
+    output.textContent = output.textContent.replace('Running...\n', '');
+    output.textContent += (data.output || 'Done') + '\n\n';
+  } catch (err) {
+    output.textContent = output.textContent.replace('Running...\n', '');
+    output.textContent += 'Error: ' + err.message + '\n\n';
+  }
+  output.scrollTop = output.scrollHeight;
+});
+</script>
+<%- include('../partials/footer') %>

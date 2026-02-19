@@ -1,0 +1,89 @@
+<% const extraScripts = ''; %>
+<%- include('../partials/header') %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <a href="/admin" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-500">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="text-xl font-bold">Logs — <%= appName %></h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Application log viewer</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <select id="lineCount" onchange="refreshLogs()" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-brand-500">
+        <option value="50">50 lines</option>
+        <option value="100" selected>100 lines</option>
+        <option value="200">200 lines</option>
+        <option value="500">500 lines</option>
+      </select>
+      <button onclick="refreshLogs()" class="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors">
+        <i class="bi bi-arrow-clockwise mr-1"></i>Refresh
+      </button>
+      <% if (user.role !== 'STAFF') { %>
+      <button onclick="flushLogs()" class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">
+        <i class="bi bi-trash mr-1"></i>Clear Logs
+      </button>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="bg-gray-900 dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div class="px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700 flex items-center justify-between">
+      <span class="text-xs text-gray-400"><i class="bi bi-terminal mr-1"></i>Log Output</span>
+      <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+        <input type="checkbox" id="autoScroll" checked class="rounded">
+        Auto-scroll
+      </label>
+    </div>
+    <pre id="logContent" class="p-4 text-xs text-green-400 font-mono overflow-auto whitespace-pre-wrap" style="max-height: 600px;"><%= logs %></pre>
+  </div>
+</div>
+
+<input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+
+<script>
+const appName = '<%= appName %>';
+const csrfToken = document.getElementById('csrfToken').value;
+
+async function refreshLogs() {
+  const lines = document.getElementById('lineCount').value;
+  try {
+    const res = await fetch(`/admin/api/apps/${appName}/logs?lines=${lines}`);
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('logContent').textContent = data.logs;
+      if (document.getElementById('autoScroll').checked) {
+        const el = document.getElementById('logContent');
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  } catch (err) {
+    console.error('Refresh logs error:', err);
+  }
+}
+
+async function flushLogs() {
+  if (!confirm('Clear all logs for ' + appName + '?')) return;
+  try {
+    const res = await fetch(`/admin/app/${appName}/flush-logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken }
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('logContent').textContent = 'Logs cleared.';
+    }
+  } catch (err) {
+    console.error('Flush logs error:', err);
+  }
+}
+
+// Auto-scroll on load
+const logEl = document.getElementById('logContent');
+logEl.scrollTop = logEl.scrollHeight;
+</script>
+
+<%- include('../partials/footer') %>

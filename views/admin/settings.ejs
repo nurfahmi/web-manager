@@ -1,0 +1,412 @@
+<% const extraScripts = ''; %>
+<%- include('../partials/header') %>
+
+<div class="mb-6">
+  <div class="flex items-center gap-3 mb-6">
+    <a href="/admin" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-500">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h1 class="text-xl font-bold">Settings</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Cloudflare Tunnel & System Configuration</p>
+    </div>
+  </div>
+
+  <!-- Cloudflare Tunnel Section -->
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 mb-6">
+    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <h2 class="font-semibold text-lg"><i class="bi bi-cloud-arrow-up mr-2 text-brand-500"></i>Cloudflare Tunnel</h2>
+      <div class="flex items-center gap-2">
+        <% if (tunnelStatus.installed) { %>
+          <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">Installed</span>
+        <% } else { %>
+          <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full font-medium">Not Installed</span>
+        <% } %>
+        <% if (tunnelStatus.running) { %>
+          <span class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">● Running</span>
+        <% } else if (tunnelStatus.installed) { %>
+          <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full font-medium">● Stopped</span>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="p-5">
+      <% if (!tunnelStatus.installed) { %>
+      <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+        <h3 class="font-semibold text-amber-800 dark:text-amber-400 mb-2"><i class="bi bi-download mr-1"></i>Step 1: Install Cloudflared</h3>
+        <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">Cloudflared is not installed. Click below to install via Homebrew.</p>
+        <button onclick="tunnelAction('install', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <i class="bi bi-download mr-1"></i>Install Cloudflared
+        </button>
+      </div>
+      <% } else { %>
+
+      <!-- Controls -->
+      <div class="flex flex-wrap gap-3 mb-5">
+        <% if (!tunnelStatus.running) { %>
+        <button onclick="tunnelAction('start', this)" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <i class="bi bi-play-fill mr-1"></i>Start Tunnel
+        </button>
+        <% } else { %>
+        <button onclick="tunnelAction('stop', this)" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <i class="bi bi-stop-fill mr-1"></i>Stop Tunnel
+        </button>
+        <% } %>
+      </div>
+
+      <!-- Config Editor -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold"><i class="bi bi-file-earmark-code mr-1"></i>Tunnel Configuration</h3>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-400"><%= tunnelStatus.installed ? '~/.cloudflared/config.yml' : '' %></span>
+            <button onclick="toggleConfigMode()" id="configModeBtn" class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <i class="bi bi-code-slash mr-1"></i>Raw YAML
+            </button>
+          </div>
+        </div>
+
+        <!-- Visual Form -->
+        <div id="configForm">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-1">Tunnel ID</label>
+                <input type="text" id="cfgTunnelId" placeholder="e.g. a1b2c3d4-xxxx-xxxx-xxxx" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-sm font-mono">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Credentials File</label>
+                <div class="flex gap-2">
+                  <input type="text" id="cfgCredFile" placeholder="/Users/YOUR-USER/.cloudflared/TUNNEL-ID.json" class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-sm font-mono">
+                  <button onclick="toggleCredBrowser()" class="px-3 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-sm">
+                    <i class="bi bi-folder2-open"></i>
+                  </button>
+                </div>
+                <div id="credBrowser" class="hidden mt-2 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <div class="px-3 py-2 bg-gray-100 dark:bg-gray-800 flex items-center gap-2 border-b border-gray-300 dark:border-gray-700">
+                    <i class="bi bi-folder-fill text-amber-500 text-xs"></i>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 truncate" id="credPathLabel">/Users</span>
+                  </div>
+                  <div id="credFileList" class="max-h-48 overflow-y-auto"></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium">Ingress Rules <span class="text-gray-400 font-normal">(domain → local service)</span></label>
+                <button onclick="addIngressRule()" class="text-xs px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition-colors">
+                  <i class="bi bi-plus-lg mr-1"></i>Add Rule
+                </button>
+              </div>
+              <div id="ingressRules" class="space-y-2"></div>
+              <div class="mt-2 flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs text-gray-500">
+                <i class="bi bi-info-circle"></i>
+                <span>A catch-all rule (<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">http_status:404</code>) is added automatically at the end.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mt-4">
+            <div id="configSaveStatus" class="text-sm"></div>
+            <button onclick="saveConfigFromForm()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <i class="bi bi-save mr-1"></i>Save Config
+            </button>
+          </div>
+        </div>
+
+        <!-- Raw YAML Editor -->
+        <div id="configRaw" class="hidden">
+          <textarea id="tunnelConfigEditor" rows="16" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 font-mono text-sm outline-none focus:ring-2 focus:ring-brand-500 resize-y"><%= tunnelConfig %></textarea>
+          <div class="flex items-center justify-between mt-3">
+            <div id="configSaveStatusRaw" class="text-sm"></div>
+            <button onclick="saveConfig()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <i class="bi bi-save mr-1"></i>Save Config
+            </button>
+          </div>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Info Card -->
+  <div class="bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-xl p-5 mb-6">
+    <h3 class="font-semibold text-brand-800 dark:text-brand-300 mb-2"><i class="bi bi-info-circle mr-1"></i>How Cloudflare Tunnel Works</h3>
+    <ol class="text-sm text-brand-700 dark:text-brand-400 space-y-1 list-decimal list-inside">
+      <li>Create tunnel manually via CLI: <code class="bg-brand-100 dark:bg-brand-900 px-1 rounded text-xs">cloudflared tunnel login</code> then <code class="bg-brand-100 dark:bg-brand-900 px-1 rounded text-xs">cloudflared tunnel create my-tunnel</code></li>
+      <li>Fill in your Tunnel ID and Credentials File above</li>
+      <li>Add ingress rules to map your domains to local services</li>
+      <li>Click Save Config, then Start Tunnel</li>
+      <li>The tunnel auto-starts when the panel boots</li>
+    </ol>
+  </div>
+
+  <!-- Web Terminal -->
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <h2 class="font-semibold text-lg"><i class="bi bi-terminal mr-2 text-brand-500"></i>Terminal</h2>
+      <button onclick="document.getElementById('termOutput').textContent = ''" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <i class="bi bi-trash mr-1"></i>Clear
+      </button>
+    </div>
+    <div class="bg-gray-950 rounded-b-xl">
+      <pre id="termOutput" class="px-4 pt-4 pb-2 text-xs font-mono text-green-400 overflow-auto whitespace-pre-wrap" style="max-height: 400px; min-height: 100px;">Welcome to Indosofthouse Terminal
+Type commands below and press Enter.
+
+</pre>
+      <div class="flex items-center gap-2 px-4 pb-4">
+        <span class="text-green-500 text-sm font-mono">$</span>
+        <input type="text" id="termInput" placeholder="Type a command..." autocomplete="off"
+          class="flex-1 bg-transparent text-green-400 font-mono text-sm outline-none border-none placeholder-gray-600">
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+
+<script>
+const csrfToken = document.getElementById('csrfToken').value;
+const cmdHistory = [];
+let historyIdx = -1;
+
+// --- Config Form ---
+function parseExistingConfig() {
+  const raw = document.getElementById('tunnelConfigEditor').value.trim();
+  if (!raw) return;
+
+  const lines = raw.split('\n');
+  let tunnelId = '', credFile = '';
+  const rules = [];
+  let inIngress = false;
+  let currentRule = {};
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('tunnel:')) tunnelId = trimmed.split(':').slice(1).join(':').trim();
+    if (trimmed.startsWith('credentials-file:')) credFile = trimmed.split(':').slice(1).join(':').trim();
+    if (trimmed === 'ingress:') { inIngress = true; return; }
+    if (inIngress) {
+      if (trimmed.startsWith('- hostname:')) {
+        currentRule = { hostname: trimmed.replace('- hostname:', '').trim() };
+      } else if (trimmed.startsWith('service:') && currentRule.hostname) {
+        currentRule.service = trimmed.replace('service:', '').trim();
+        rules.push({ ...currentRule });
+        currentRule = {};
+      } else if (trimmed.startsWith('- service:')) {
+        // catch-all, skip
+      }
+    }
+  });
+
+  document.getElementById('cfgTunnelId').value = tunnelId;
+  document.getElementById('cfgCredFile').value = credFile;
+  document.getElementById('ingressRules').innerHTML = '';
+  if (rules.length > 0) {
+    rules.forEach(r => addIngressRule(r.hostname, r.service));
+  } else {
+    addIngressRule('', '');
+  }
+}
+
+function addIngressRule(hostname, service) {
+  const container = document.getElementById('ingressRules');
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-2';
+  row.innerHTML = `
+    <input type="text" placeholder="panel.yourdomain.com" value="${hostname || ''}" class="ingress-host flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+    <i class="bi bi-arrow-right text-gray-400"></i>
+    <input type="text" placeholder="http://localhost:3000" value="${service || ''}" class="ingress-svc flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+    <button onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600 transition-colors"><i class="bi bi-x-lg"></i></button>
+  `;
+  container.appendChild(row);
+}
+
+function buildYamlFromForm() {
+  const tunnelId = document.getElementById('cfgTunnelId').value.trim();
+  const credFile = document.getElementById('cfgCredFile').value.trim();
+  const hosts = document.querySelectorAll('.ingress-host');
+  const svcs = document.querySelectorAll('.ingress-svc');
+
+  let yaml = '';
+  if (tunnelId) yaml += 'tunnel: ' + tunnelId + '\n';
+  if (credFile) yaml += 'credentials-file: ' + credFile + '\n';
+  yaml += '\ningress:\n';
+
+  for (let i = 0; i < hosts.length; i++) {
+    const h = hosts[i].value.trim();
+    const s = svcs[i].value.trim();
+    if (h && s) {
+      yaml += '  - hostname: ' + h + '\n';
+      yaml += '    service: ' + s + '\n';
+    }
+  }
+  yaml += '  - service: http_status:404\n';
+  return yaml;
+}
+
+async function saveConfigFromForm() {
+  const config = buildYamlFromForm();
+  const statusEl = document.getElementById('configSaveStatus');
+  try {
+    const res = await fetch('/admin/api/tunnel/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken },
+      body: JSON.stringify({ config })
+    });
+    const data = await res.json();
+    if (data.success) {
+      statusEl.innerHTML = '<span class="text-green-600 dark:text-green-400"><i class="bi bi-check-circle mr-1"></i>' + data.message + '</span>';
+      document.getElementById('tunnelConfigEditor').value = config;
+    } else {
+      statusEl.innerHTML = '<span class="text-red-600 dark:text-red-400"><i class="bi bi-x-circle mr-1"></i>' + data.message + '</span>';
+    }
+  } catch (err) { statusEl.innerHTML = '<span class="text-red-600">Failed to save</span>'; }
+  setTimeout(() => statusEl.innerHTML = '', 5000);
+}
+
+function toggleConfigMode() {
+  const form = document.getElementById('configForm');
+  const raw = document.getElementById('configRaw');
+  const btn = document.getElementById('configModeBtn');
+  if (raw.classList.contains('hidden')) {
+    // Switch to raw
+    document.getElementById('tunnelConfigEditor').value = buildYamlFromForm();
+    form.classList.add('hidden');
+    raw.classList.remove('hidden');
+    btn.innerHTML = '<i class="bi bi-ui-checks mr-1"></i>Visual Form';
+  } else {
+    // Switch to form
+    parseExistingConfig();
+    raw.classList.add('hidden');
+    form.classList.remove('hidden');
+    btn.innerHTML = '<i class="bi bi-code-slash mr-1"></i>Raw YAML';
+  }
+}
+
+// --- Credential File Browser ---
+function toggleCredBrowser() {
+  const browser = document.getElementById('credBrowser');
+  if (browser.classList.contains('hidden')) {
+    browser.classList.remove('hidden');
+    const existing = document.getElementById('cfgCredFile').value.trim();
+    const startDir = existing ? existing.replace(/\/[^\/]*$/, '') : '/Users';
+    browseCredDir(startDir);
+  } else {
+    browser.classList.add('hidden');
+  }
+}
+
+async function browseCredDir(dirPath) {
+  const fileList = document.getElementById('credFileList');
+  const pathLabel = document.getElementById('credPathLabel');
+  fileList.innerHTML = '<div class="text-center py-3 text-gray-400 text-xs">Loading...</div>';
+  pathLabel.textContent = dirPath;
+
+  try {
+    const res = await fetch('/admin/api/browse?path=' + encodeURIComponent(dirPath) + '&showHidden=1&ext=json');
+    const data = await res.json();
+    if (!data.success) { fileList.innerHTML = '<div class="text-center py-3 text-red-400 text-xs">' + data.message + '</div>'; return; }
+
+    let html = '';
+    (data.items || []).forEach(item => {
+      if (item.type === 'directory') {
+        html += '<div class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center gap-2 text-xs border-b border-gray-100 dark:border-gray-800" onclick="browseCredDir(\'' + item.path.replace(/'/g, "\\'") + '\')">'
+              + '<i class="bi bi-' + (item.name === '..' ? 'arrow-up text-gray-400' : 'folder-fill text-amber-500') + '"></i>'
+              + '<span>' + item.name + '</span></div>';
+      } else {
+        html += '<div class="px-3 py-2 hover:bg-brand-50 dark:hover:bg-brand-900/20 cursor-pointer flex items-center gap-2 text-xs border-b border-gray-100 dark:border-gray-800" onclick="selectCredFile(\'' + item.path.replace(/'/g, "\\'") + '\')">'
+              + '<i class="bi bi-file-earmark-code text-brand-500"></i>'
+              + '<span class="text-brand-600 dark:text-brand-400">' + item.name + '</span></div>';
+      }
+    });
+
+    fileList.innerHTML = html || '<div class="text-center py-3 text-gray-400 text-xs">Empty directory</div>';
+  } catch (err) {
+    fileList.innerHTML = '<div class="text-center py-3 text-red-400 text-xs">Failed to browse</div>';
+  }
+}
+
+function selectCredFile(filePath) {
+  document.getElementById('cfgCredFile').value = filePath;
+  document.getElementById('credBrowser').classList.add('hidden');
+}
+
+// Init: parse existing config into form
+parseExistingConfig();
+
+// --- Terminal ---
+document.getElementById('termInput').addEventListener('keydown', async function(e) {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (historyIdx < cmdHistory.length - 1) { historyIdx++; this.value = cmdHistory[cmdHistory.length - 1 - historyIdx]; }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIdx > 0) { historyIdx--; this.value = cmdHistory[cmdHistory.length - 1 - historyIdx]; } else { historyIdx = -1; this.value = ''; }
+    return;
+  }
+  if (e.key !== 'Enter') return;
+  const cmd = this.value.trim();
+  if (!cmd) return;
+  cmdHistory.push(cmd);
+  historyIdx = -1;
+  this.value = '';
+  const output = document.getElementById('termOutput');
+  output.textContent += '$ ' + cmd + '\n';
+  output.textContent += 'Running...\n';
+  output.scrollTop = output.scrollHeight;
+  try {
+    const res = await fetch('/admin/api/terminal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken },
+      body: JSON.stringify({ command: cmd })
+    });
+    const data = await res.json();
+    output.textContent = output.textContent.replace('Running...\n', '');
+    output.textContent += (data.output || 'Done') + '\n\n';
+  } catch (err) {
+    output.textContent = output.textContent.replace('Running...\n', '');
+    output.textContent += 'Error: ' + err.message + '\n\n';
+  }
+  output.scrollTop = output.scrollHeight;
+});
+
+// --- Tunnel Actions ---
+async function tunnelAction(action, btn) {
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split mr-1"></i>Please wait...';
+  try {
+    const res = await fetch('/admin/api/tunnel/' + action, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken }
+    });
+    const data = await res.json();
+    if (data.success) { alert(data.message || 'Done!'); location.reload(); }
+    else { alert('Error: ' + data.message); }
+  } catch (err) { alert('Failed: ' + err.message); }
+  btn.disabled = false;
+  btn.innerHTML = origText;
+}
+
+async function saveConfig() {
+  const config = document.getElementById('tunnelConfigEditor').value;
+  const statusEl = document.getElementById('configSaveStatusRaw');
+  try {
+    const res = await fetch('/admin/api/tunnel/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken },
+      body: JSON.stringify({ config })
+    });
+    const data = await res.json();
+    if (data.success) { statusEl.innerHTML = '<span class="text-green-600 dark:text-green-400"><i class="bi bi-check-circle mr-1"></i>' + data.message + '</span>'; }
+    else { statusEl.innerHTML = '<span class="text-red-600 dark:text-red-400"><i class="bi bi-x-circle mr-1"></i>' + data.message + '</span>'; }
+  } catch (err) { statusEl.innerHTML = '<span class="text-red-600">Failed to save</span>'; }
+  setTimeout(() => statusEl.innerHTML = '', 5000);
+}
+</script>
+
+<%- include('../partials/footer') %>

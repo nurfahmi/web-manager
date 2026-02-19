@@ -1,0 +1,159 @@
+<% const extraScripts = ''; %>
+<%- include('../partials/header') %>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+
+<div class="mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <a href="/admin" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-500">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="text-xl font-bold"><i class="bi bi-terminal mr-2 text-brand-500"></i>System Terminal</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Interactive shell — fully functional remote terminal</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="connStatus" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 dark:bg-gray-800 text-gray-500">Connecting...</span>
+      <button onclick="reconnect()" class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm transition-colors" title="Reconnect">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-gray-950 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+    <div class="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+        <span class="text-xs text-gray-500 ml-2"><%= metrics.hostname || 'server' %> — zsh</span>
+      </div>
+    </div>
+    <div id="terminal-container" style="height: calc(80vh - 100px); min-height: 400px;"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+
+<script>
+const term = new Terminal({
+  cursorBlink: true,
+  fontSize: 14,
+  fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', Menlo, monospace",
+  theme: {
+    background: '#030712',
+    foreground: '#e5e7eb',
+    cursor: '#22c55e',
+    cursorAccent: '#030712',
+    selectionBackground: 'rgba(59, 130, 246, 0.3)',
+    black: '#1f2937',
+    red: '#ef4444',
+    green: '#22c55e',
+    yellow: '#eab308',
+    blue: '#3b82f6',
+    magenta: '#a855f7',
+    cyan: '#06b6d4',
+    white: '#e5e7eb',
+    brightBlack: '#6b7280',
+    brightRed: '#f87171',
+    brightGreen: '#4ade80',
+    brightYellow: '#facc15',
+    brightBlue: '#60a5fa',
+    brightMagenta: '#c084fc',
+    brightCyan: '#22d3ee',
+    brightWhite: '#f9fafb'
+  },
+  allowProposedApi: true,
+  scrollback: 5000
+});
+
+const fitAddon = new FitAddon.FitAddon();
+const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+term.loadAddon(fitAddon);
+term.loadAddon(webLinksAddon);
+
+const container = document.getElementById('terminal-container');
+term.open(container);
+fitAddon.fit();
+
+let ws = null;
+
+function updateStatus(status, color) {
+  const el = document.getElementById('connStatus');
+  const colors = {
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+    gray: 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+  };
+  el.className = 'text-xs px-2 py-0.5 rounded-full font-medium ' + (colors[color] || colors.gray);
+  el.textContent = status;
+}
+
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(protocol + '//' + location.host + '/ws/terminal');
+
+  ws.onopen = () => {
+    updateStatus('● Connected', 'green');
+    // Send initial size
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  };
+
+  ws.onmessage = (event) => {
+    term.write(event.data);
+  };
+
+  ws.onclose = () => {
+    updateStatus('● Disconnected', 'red');
+    term.write('\r\n\x1b[31m[Connection closed. Click reconnect to start a new session.]\x1b[0m\r\n');
+  };
+
+  ws.onerror = () => {
+    updateStatus('● Error', 'red');
+  };
+}
+
+function reconnect() {
+  if (ws) {
+    ws.close();
+  }
+  term.clear();
+  updateStatus('Connecting...', 'gray');
+  connect();
+}
+
+// Send keystrokes to server
+term.onData((data) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(data);
+  }
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+  fitAddon.fit();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }
+});
+
+// Also fit when container might change
+new ResizeObserver(() => {
+  fitAddon.fit();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }
+}).observe(container);
+
+// Connect on load
+connect();
+
+// Focus terminal
+term.focus();
+</script>
+
+<%- include('../partials/footer') %>
