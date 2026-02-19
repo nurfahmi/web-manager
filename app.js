@@ -41,9 +41,22 @@ app.use(express.json());
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Sessions
+// Sessions — persist in MySQL so login survives restarts
+const MySQLStore = require('express-mysql-session')(session);
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'web_manager',
+  clearExpired: true,
+  checkExpirationInterval: 900000, // 15 min
+  expiration: 8 * 60 * 60 * 1000 // 8 hours
+});
+
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'change-this-secret',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
