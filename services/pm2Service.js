@@ -42,6 +42,31 @@ async function validateAppName(name) {
 }
 
 /**
+ * Parse .env file into an object
+ */
+function parseEnvFile(envPath) {
+  const fs = require('fs');
+  const envVars = {};
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.substring(0, eqIdx).trim();
+        let val = trimmed.substring(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        envVars[key] = val;
+      }
+    }
+  }
+  return envVars;
+}
+
+/**
  * Execute a PM2 action on an app
  */
 async function executeAction(name, action) {
@@ -58,6 +83,45 @@ async function executeAction(name, action) {
   const safeName = name.replace(/[^a-zA-Z0-9\-_]/g, '');
   if (safeName !== name) {
     throw new Error('Invalid app name characters');
+  }
+
+  // On restart: re-read .env and rebuild ecosystem config
+  if (action === 'restart') {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Get app info from PM2 to find its cwd and script
+    const { stdout: jlist } = await execAsync('pm2 jlist');
+    const apps = JSON.parse(jlist);
+    const appInfo = apps.find(a => a.name === safeName);
+
+    if (appInfo) {
+      const cwd = appInfo.pm2_env.pm_cwd || path.dirname(appInfo.pm2_env.pm_exec_path);
+      const script = path.relative(cwd, appInfo.pm2_env.pm_exec_path);
+      const envPath = path.join(cwd, '.env');
+      const envVars = parseEnvFile(envPath);
+
+      // Create temp ecosystem config with fresh env vars
+      const ecoConfig = {
+        apps: [{
+          name: safeName,
+          script: script,
+          cwd: cwd,
+          env: envVars
+        }]
+      };
+      const ecoPath = path.join(cwd, 'ecosystem.config.js');
+      fs.writeFileSync(ecoPath, 'module.exports = ' + JSON.stringify(ecoConfig, null, 2) + ';\n', 'utf8');
+
+      try {
+        await execAsync(`pm2 delete ${safeName}`);
+        const { stdout } = await execAsync('pm2 start ecosystem.config.js', { cwd });
+        await execAsync('pm2 save');
+        return stdout;
+      } finally {
+        try { fs.unlinkSync(ecoPath); } catch (e) {}
+      }
+    }
   }
 
   const { stdout } = await execAsync(`pm2 ${action} ${safeName}`);
@@ -160,24 +224,7 @@ async function addApp(name, scriptPath, envContent) {
   }
 
   // Parse .env file into env object
-  const envVars = {};
-  if (fs.existsSync(envPath)) {
-    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx > 0) {
-        const key = trimmed.substring(0, eqIdx).trim();
-        let val = trimmed.substring(eqIdx + 1).trim();
-        // Remove surrounding quotes
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-          val = val.slice(1, -1);
-        }
-        envVars[key] = val;
-      }
-    }
-  }
+  const envVars = parseEnvFile(envPath);
 
   // Run npm install if package.json exists
   if (fs.existsSync(path.join(projectRoot, 'package.json'))) {
