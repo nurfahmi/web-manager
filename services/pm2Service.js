@@ -110,12 +110,12 @@ async function executeAction(name, action) {
           env: envVars
         }]
       };
-      const ecoPath = path.join(cwd, 'ecosystem.config.js');
+      const ecoPath = path.join(cwd, 'ecosystem.config.cjs');
       fs.writeFileSync(ecoPath, 'module.exports = ' + JSON.stringify(ecoConfig, null, 2) + ';\n', 'utf8');
 
       try {
         await execAsync(`pm2 delete ${safeName}`);
-        const { stdout } = await execAsync('pm2 start ecosystem.config.js', { cwd });
+        const { stdout } = await execAsync('pm2 start ecosystem.config.cjs', { cwd });
         await execAsync('pm2 save');
         return stdout;
       } finally {
@@ -242,16 +242,16 @@ async function addApp(name, scriptPath, envContent) {
       env: envVars
     }]
   };
-  const ecoPath = path.join(projectRoot, 'ecosystem.config.js');
+  const ecoPath = path.join(projectRoot, 'ecosystem.config.cjs');
   fs.writeFileSync(ecoPath, 'module.exports = ' + JSON.stringify(ecoConfig, null, 2) + ';\n', 'utf8');
 
-  const { stdout } = await execAsync('pm2 start ecosystem.config.js', { cwd: projectRoot });
-  await execAsync('pm2 save');
-
-  // Clean up ecosystem file
-  try { fs.unlinkSync(ecoPath); } catch (e) {}
-
-  return stdout;
+  try {
+    const { stdout } = await execAsync('pm2 start ecosystem.config.cjs', { cwd: projectRoot });
+    await execAsync('pm2 save');
+    return stdout;
+  } finally {
+    try { fs.unlinkSync(ecoPath); } catch (e) {}
+  }
 }
 
 /**
