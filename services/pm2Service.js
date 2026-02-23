@@ -114,8 +114,7 @@ async function executeAction(name, action) {
       fs.writeFileSync(ecoPath, 'module.exports = ' + JSON.stringify(ecoConfig, null, 2) + ';\n', 'utf8');
 
       try {
-        await execAsync(`pm2 delete ${safeName}`);
-        const { stdout } = await execAsync('pm2 start ecosystem.config.cjs', { cwd });
+        const { stdout } = await execAsync('pm2 restart ecosystem.config.cjs --update-env', { cwd });
         await execAsync('pm2 save');
         return stdout;
       } finally {
