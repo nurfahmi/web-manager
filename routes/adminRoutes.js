@@ -63,4 +63,13 @@ router.post('/api/tunnel/stop', requireRole('SUPER_ADMIN'), settingsController.s
 router.post('/api/tunnel/restart', requireRole('SUPER_ADMIN'), settingsController.restartTunnel);
 router.post('/api/terminal', requireRole('SUPER_ADMIN'), settingsController.runCommand);
 
+// Redis API (SUPER_ADMIN only)
+router.get('/api/redis/status', requireRole('SUPER_ADMIN'), settingsController.getRedisStatus);
+router.get('/api/redis/info', requireRole('SUPER_ADMIN'), settingsController.getRedisInfo);
+router.post('/api/redis/install', requireRole('SUPER_ADMIN'), settingsController.installRedis);
+router.post('/api/redis/start', requireRole('SUPER_ADMIN'), settingsController.startRedis);
+router.post('/api/redis/stop', requireRole('SUPER_ADMIN'), settingsController.stopRedis);
+router.post('/api/redis/restart', requireRole('SUPER_ADMIN'), settingsController.restartRedis);
+router.post('/api/redis/flush', requireRole('SUPER_ADMIN'), settingsController.flushRedis);
+
 module.exports = router;

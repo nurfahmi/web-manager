@@ -130,6 +130,80 @@
     </ol>
   </div>
 
+  <!-- Redis Section -->
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 mb-6">
+    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <h2 class="font-semibold text-lg"><i class="bi bi-database mr-2 text-red-500"></i>Redis</h2>
+      <div class="flex items-center gap-2">
+        <% if (!redisStatus.installed) { %>
+          <span class="text-xs px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-full font-medium">Not Installed</span>
+        <% } else if (redisStatus.running) { %>
+          <span id="redisStatusBadge" class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-medium">● Running</span>
+        <% } else { %>
+          <span id="redisStatusBadge" class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full font-medium">● Stopped</span>
+        <% } %>
+        <% if (redisStatus.version) { %>
+          <span class="text-xs text-gray-400">v<%= redisStatus.version %></span>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="p-5">
+      <% if (!redisStatus.installed) { %>
+        <!-- Install Button -->
+        <div class="text-center py-6">
+          <i class="bi bi-database-x text-4xl text-gray-300 dark:text-gray-600 mb-3 block"></i>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">Redis is not installed on this server.</p>
+          <button onclick="redisAction('install', this)" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="bi bi-download mr-1"></i>Install Redis via Homebrew
+          </button>
+          <p class="text-xs text-gray-400 mt-2">This will run <code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">brew install redis</code></p>
+        </div>
+      <% } else { %>
+        <!-- Controls -->
+        <div class="flex flex-wrap gap-3 mb-5">
+          <% if (!redisStatus.running) { %>
+          <button onclick="redisAction('start', this)" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="bi bi-play-fill mr-1"></i>Start
+          </button>
+          <% } else { %>
+          <button onclick="redisAction('stop', this)" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="bi bi-stop-fill mr-1"></i>Stop
+          </button>
+          <button onclick="redisAction('restart', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="bi bi-arrow-repeat mr-1"></i>Restart
+          </button>
+          <button onclick="if(confirm('Flush ALL Redis data? This cannot be undone.')) redisAction('flush', this)" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="bi bi-trash mr-1"></i>Flush All
+          </button>
+          <% } %>
+        </div>
+
+        <!-- Stats -->
+        <% if (redisStatus.running) { %>
+        <div id="redisStats" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Memory Used</div>
+            <div class="text-lg font-bold" id="redisMemory"><%= redisStatus.info ? (redisStatus.info.used_memory_human || '-') : '-' %></div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Connected Clients</div>
+            <div class="text-lg font-bold" id="redisClients"><%= redisStatus.info ? (redisStatus.info.connected_clients || '-') : '-' %></div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Keys</div>
+            <div class="text-lg font-bold" id="redisKeys">-</div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Uptime</div>
+            <div class="text-lg font-bold" id="redisUptime"><%= redisStatus.info ? (Math.floor((parseInt(redisStatus.info.uptime_in_seconds) || 0) / 3600) + 'h') : '-' %></div>
+          </div>
+        </div>
+        <% } %>
+      <% } %>
+    </div>
+  </div>
+
   <!-- Web Terminal -->
   <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
     <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
@@ -394,6 +468,54 @@ async function saveConfig() {
     else { statusEl.innerHTML = '<span class="text-red-600 dark:text-red-400"><i class="bi bi-x-circle mr-1"></i>' + data.message + '</span>'; }
   } catch (err) { statusEl.innerHTML = '<span class="text-red-600">Failed to save</span>'; }
   setTimeout(() => statusEl.innerHTML = '', 5000);
+}
+
+// --- Redis Actions ---
+async function redisAction(action, btn) {
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split mr-1"></i>Please wait...';
+  try {
+    const res = await fetch('/admin/api/redis/' + action, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken }
+    });
+    const data = await res.json();
+    if (data.success) { alert(data.message || 'Done!'); location.reload(); }
+    else { alert('Error: ' + data.message); }
+  } catch (err) { alert('Failed: ' + err.message); }
+  btn.disabled = false;
+  btn.innerHTML = origText;
+}
+
+// --- Redis Stats Polling ---
+async function refreshRedisStats() {
+  try {
+    const res = await fetch('/admin/api/redis/info');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const mem = data.info && data.info.memory ? data.info.memory.used_memory_human : '-';
+    const clients = data.info && data.info.clients ? data.info.clients.connected_clients : '-';
+    const uptime = data.info && data.info.server ? Math.floor((parseInt(data.info.server.uptime_in_seconds) || 0) / 3600) + 'h' : '-';
+
+    const el = id => document.getElementById(id);
+    if (el('redisMemory')) el('redisMemory').textContent = mem;
+    if (el('redisClients')) el('redisClients').textContent = clients;
+    if (el('redisUptime')) el('redisUptime').textContent = uptime;
+
+    // Total keys
+    if (data.keys && el('redisKeys')) {
+      const total = Object.values(data.keys).reduce((a, b) => a + b, 0);
+      el('redisKeys').textContent = total.toLocaleString();
+    }
+  } catch {}
+}
+
+// Refresh redis stats on load and every 10s
+if (document.getElementById('redisStats')) {
+  refreshRedisStats();
+  setInterval(refreshRedisStats, 10000);
 }
 </script>
 

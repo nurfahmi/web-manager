@@ -138,6 +138,21 @@ else
   echo -e "${GREEN}✅ PM2 already installed ($(pm2 --version))${NC}"
 fi
 
+# --- Install Redis ---
+if ! command -v redis-server &> /dev/null; then
+  echo -e "${YELLOW}Installing Redis...${NC}"
+  brew install redis
+  echo -e "${GREEN}✅ Redis installed${NC}"
+else
+  echo -e "${GREEN}✅ Redis already installed${NC}"
+fi
+
+# --- Start Redis ---
+echo -e "${YELLOW}Starting Redis...${NC}"
+brew services start redis 2>/dev/null || true
+sleep 1
+echo -e "${GREEN}✅ Redis running (auto-starts on boot)${NC}"
+
 # --- Install npm dependencies ---
 echo -e "${YELLOW}Installing project dependencies...${NC}"
 npm install
@@ -199,6 +214,7 @@ echo -e "  Everything auto-starts on boot:"
 echo -e "    ✅ MySQL"
 echo -e "    ✅ PM2 (all apps + this panel)"
 echo -e "    ✅ phpMyAdmin"
+echo -e "    ✅ Redis"
 echo ""
 echo -e "  PM2 Status:  pm2 status"
 echo -e "  PM2 Logs:    pm2 logs web-manager"
