@@ -41,6 +41,9 @@ app.use(express.json());
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Trust proxy (nginx / cloudflare) so secure cookies work in production
+app.set('trust proxy', 1);
+
 // Sessions — persist in MySQL so login survives restarts
 const MySQLStore = require('express-mysql-session')(session);
 const sessionStore = new MySQLStore({
