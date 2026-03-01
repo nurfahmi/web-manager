@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
 const csrf = require('csurf');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 const { WebSocketServer } = require('ws');
@@ -40,6 +41,7 @@ app.use(express.json());
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cookieParser());
 
 // Trust proxy (nginx / cloudflare) so secure cookies work in production
 app.set('trust proxy', 1);
@@ -70,8 +72,8 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 
-// CSRF protection
-const csrfProtection = csrf();
+// CSRF protection (cookie-based, independent of session store)
+const csrfProtection = csrf({ cookie: true });
 app.use(csrfProtection);
 
 // Routes
